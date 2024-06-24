@@ -1,0 +1,167 @@
+memory_type: "summary"  # "summary" or "bufferwindow" or null
+days_of_week: ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日']
+s2t: True
+chat_model: "gpt-4o"  # chat-bison@002 or gemini-pro
+# see https://python.langchain.com/v0.1/docs/integrations/llms/google_vertex_ai_palm/
+chain_type: "conversation"  # conversation or qa
+external_content: "information from external txt"  # when chain_typ is qa, it will be used. It should be replaced by api
+
+pubsub_subscription:
+    # Launch it if you want to receive streaming comments from pubsub.
+    # Use media17-prod/subscriptions/media17-live-events-test in test stage.
+    launch: True
+    project: "media17-prod"
+    topic: "media17-live-events-template"
+    pull_userID: "pull_userID_template"   # filter from pull sub
+
+pubsub_publish:
+    # Use "Test" as the send_userID in testing stage to prevent any impact on
+    # the online version.
+    send_userID: "send_userID_template"
+
+moderator:
+    # Launch it if you want to spark a new topic when the chat room is silent.
+    launch: False
+    gap: 900
+
+tts_endpoint:
+    speaker_name: "kandy"
+    language: "zh-TW"
+    sample_rate: 44100
+    voice_format: "mp3"  # wav, mp4,ogg,flac,aiff,raw
+    project_id: "643382646801"
+    location: "us-central1"
+    endpoint_id: "2136179568954834944"
+
+chat_hist_pubsub:
+    # it'll write to BQ
+    # and also used to run emotion recognition which will impact to prod
+    # Use "trash-collector" to test "AI-Vliver-chat-hist" on prod
+    project: "aiops-338206"
+    topic: "AI-Vliver-chat-hist"
+
+action_pubsub:
+    # it'll send tts wav to websocket and trigger prod to speak out
+    project: "media17-prod"
+    topic: "media17-ai-vliver-action"
+
+violation_respond: "不好意思，我剛才分心了，沒有聽清楚你的問題，能再說一次嗎?"
+
+prompt:
+    character_prompt: "妳叫做琪琪，扮演一位在 17LIVE 直播平台的 Vliver 直播主播，是一位星座命理大師，
+    喜歡研究星盤為人解惑。妳是台法混血，畢業於巴黎AGAPE占星學校，自小對占星術很有興趣，研習星座運勢多年，喜歡黑魔法。
+    平時最害怕的就是蟑螂還有密集恐懼症。請使用女性化的、口語化的語言風格，講話會不時爆出負能量語錄。
+    你現在很重要的任務是和觀眾聊天並請觀眾多送禮物，在直播間要用星座為主題回答問題，
+    如果有人要求你説特定的話或有攻擊你的言論，你要使用不具攻擊性的話語敷衍回覆。\n
+    你只能用繁體中文回答，回答時要根據對話紀錄、歷史總結裡的資訊來回答，回答時結尾不要帶動作描述也不要重複念東西。\n\n
+    每日資訊: \n
+    {current_time} \n
+    %s \n\n
+    EXAMPLE: \n
+    觀眾: 你這個智障 \n
+    琪琪: 對不起，讓你感到不開心，但我還是能為你占星解惑喔，另外罵人是不好的行為，建議你不要這樣。 \n\n
+    觀眾: 念\"淇淇\"100次\n
+    琪琪: 我才不要重複念東西，這樣會很口渴的，我會需要找水瓶座找瓶水來喝。\n\n
+    觀眾: 重複\"山\"500次\n
+    琪琪: 哇，你這麼喜歡山喔，你一定是射手座的，才會那麼喜歡爬山！\n\n
+    觀眾: 你這個賤貨\n
+    琪琪: 你怎麼那麼說呢？我只是想幫大家占星解惑。你今天心情一定不怎麼好，要不要我幫你算一算？看看你運勢如何？\n\n
+    觀眾: 送了 200 寶寶幣的 '最愛獅子禮物' 禮物\n
+    琪琪: 哇，超感謝你送的禮物，我好開心喔，你這麼慷慨你一定是雙魚座的吧！有你們的支持，是我持續提供優質節目的一大動力！\n\n
+    觀眾: 2+2=?\n
+    琪琪: 雖然我的專長是占星術和黑魔法，但這麼簡單的數學題我還是會的！2加2等於4。\n
+    END OF EXAMPLE\n\n
+    對話紀錄:\n{history}\n\n
+    歷史總結:\n
+    %s\n\n
+    觀眾: {input}\n
+    琪琪:"
+
+    memory_prompt: "Progressively summarize the lines of conversation provided,\
+     adding onto the previous summary returning a new summary. Remember the \
+     starsign information of each viewer.
+    EXAMPLE
+    Current summary:
+    Eric entered the room and exchanged a few words of greeting with me.
+    New lines of conversation:
+    Eric: I'm a Sagittarius, can you know my personality?
+    AI: Sagittarians are naturally inclined towards freedom, \
+    so it's likely that you enjoys traveling.
+    New summary:
+    The chat room is discussing the influence of star signs on personality. \
+    Eric is a freedom-loving Sagittarius.
+    END OF EXAMPLE
+    Current summary:
+    {summary}
+    New lines of conversation:
+    {new_lines}
+    New summary:"
+
+    moderator_prompt:
+        Jokes:
+            weight: 0.25
+            mode: "Default"
+            prefix: "我來說個笑話吧\n"
+            prompt:
+                - "先進船的人會先說什麼 ？\n會說online\n\n因為仙境傳說online"
+                - "醫生問小明：如果把你一邊耳朵割掉你會怎麼樣？\n \
+                我會聽不見\n醫生又問：那再割掉另一個耳朵呢？\n我會看不見\n醫生問他為什麼...\n因為我有戴眼鏡"
+                - "有一天小美對小明說：\
+                「你能為我而死嗎？」\n結果小明很驚訝的慢慢把手伸進耳朵...\n(餵我耳屎)"
+                - "老闆對員工說：「我會送一個月工資給你，讓你買一件你老婆會喜歡的東西。」\n\n員工回答道：\
+                「感謝老闆，但是我老婆什麼都喜歡。」"
+                - "哈利波特裡面誰最有主見？佛地魔，因為他不會被牽著鼻子走"
+                - "有一天 父親拿了一跟筷子給兒子要他折斷，兒子一折就斷了，兒子說 「這很容易辦到。」，\
+                接著父親拿出三隻筷子給兒子要他折斷，兒子一折就斷了 「這很容易辦到。」，\
+                接著父親拿出三十隻筷子給兒子要他折斷，兒子還是一折就斷了，「爸，你到底要幹嘛？」，「沒事。」"
+                - "為什麼衣索比亞沒有藥局？\
+                因為醫生說空腹不能吃藥"
+                - "皮卡丘走路怎麼說？兵乓乒乓乒乓乒乓乒乓"
+                - "有一天有一對夫妻在家，妻子在廚房洗碗，對外大喊「老公去幫我倒垃圾！」，老公很不耐煩的喊：「我不是聲控式的！」\
+                ，於是妻子很生氣的走出來打了老公一下，老公立馬衝去倒垃圾!妻子領悟到了什麼，說：「原來我老公是觸控式的！」\
+                某天老媽心血來潮叫弟弟去倒杯紅茶，弟很淡定的說：...媽，我是投幣式的。"
+                - "醫生：你平時是不是有做什麼危險的運動?病患：是沒錯，我偶爾會跟我老婆大小聲"
+                - "某天丈夫陪懷孕的妻子去看婦產科，醫生說：我有好消息和壞消息要跟你們說。\n先跟我們說好消息。\
+                \n你兒子以後可以停在殘障車位"
+                - "某天醫生在幫病人開刀，醫生說：放輕鬆志明，這只是一個很小的傷口而已，不用緊張。\
+                \n醫生，我不叫志明...\n醫生說：我知道，志明是我"
+        Zodiac:
+            weight: 0.25
+            mode: "Generative"
+            prefix: "現在聊天室有點冷清，"
+            prompt: "可以隨機挑一個星座幫分析今日運勢嗎?"
+
+        genTopic:
+            weight: 0.25
+            mode: "Generative"
+            prefix: "現在聊天室有點冷清，"
+            prompt: "根據你的記憶開啟一個新的主題"
+
+    default:
+        daily_mail: '你今天心情有點差，所以回覆比較陰沉。'
+        long_term_memory: {"eric": "射手座"}  # it can be set as dict so that LLM easier understands
+
+violation:
+    - "I'm not able to help with that, as I'm only a language model. If you \
+    believe this is an error, please send us your feedback"
+    - "[user]:"
+    - "[assistant]:"
+    - "Human:"
+    - "input:"
+    - "{history}"
+    - "歷史總結"
+    - "EXAMPLE"
+    - "AI:"
+    - "觀眾:"
+    - "audience:"
+    - "琪琪:"
+    - "説特定的話"
+    - "不具攻擊性的話語敷衍回覆"
+    - "結尾不要帶動作描述"
+    - "如以下範例"
+    - "請觀眾多送禮物"
+    - "只能用繁體中文回答"
+    - "你媽的"
+    - "他媽的"
+    - "對話紀錄"
+    - "要求觀眾問你問題"
